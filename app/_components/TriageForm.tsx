@@ -27,7 +27,7 @@ import {
   DengueTriageResponse,
 } from "@/lib/types";
 
-export function TriageFormSection() {
+export function TriageForm() {
   const [formData, setFormData] = useState<Partial<DadosBarbosa>>({
     // Demográficos
     idade_paciente: 30,

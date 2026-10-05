@@ -1,9 +1,9 @@
-import { BigQuery } from '@google-cloud/bigquery';
+import { BigQuery } from "@google-cloud/bigquery";
 
 export const bigquery = new BigQuery({
-  projectId: process.env.GCP_PROJECT_ID || 'tests-327413',
+  projectId: process.env.GCP_PROJECT_ID,
   credentials: {
     client_email: process.env.GCP_CLIENT_EMAIL,
-    private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, "\n"),
   },
 });

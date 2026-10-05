@@ -1,113 +1,269 @@
 "use client";
 
-import React from "react";
-import { Grid } from "@mui/material";
-import { DashboardStats } from "@/lib/types";
-import { ComparativeSymptomsChart } from "./charts/ComparativeSymptomsChart";
-import { ComparativeAgeSeverityChart } from "./charts/ComparativeAgeSevertyChart";
-import { ComparativePrevalenceChart } from "./charts/ComparativePrevalenceChart";
+import React, { useMemo } from "react";
+import { Box, Grid, Paper, Typography } from "@mui/material";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+import {
+  processTimeSeriesData,
+  processSymptomsData,
+  processAgeDistribution,
+  processScatterData,
+  processHeatmapData,
+  formatNumber,
+  formatPercent,
+  tooltipNumberFormatter,
+  tooltipPercentFormatter,
+} from "@/lib/chartUtils";
+import { EpidemiologicalChartsProps } from "../types"; // verificar questão de respostas truncadas na api
 
-export interface EpidemiologicalChartsProps {
-  comparativo: {
-    municipio: DashboardStats;
-    estado: DashboardStats;
-    pais: DashboardStats;
-  };
-}
+export const EpidemiologicalCharts: React.FC<EpidemiologicalChartsProps> = ({
+  queryData,
+  loading = false,
+}) => {
+  const timeSeries = useMemo(
+    () => processTimeSeriesData(queryData?.timeSeries),
+    [queryData?.timeSeries],
+  );
 
-export function EpidemiologicalCharts({
-  comparativo,
-}: EpidemiologicalChartsProps) {
-  const { municipio, estado, pais } = comparativo;
+  const symptoms = useMemo(
+    () => processSymptomsData(queryData?.symptoms),
+    [queryData?.symptoms],
+  );
 
-  // 1. Processamento Normalizado de Sintomas (%)
-  const todosSintomas = [
-    "Febre",
-    "Cefaleia",
-    "Mialgia",
-    "Dor Articular",
-    "Dor Retroorbital",
-    "Exantema",
-    "Vômito",
-    "Náusea",
-  ];
+  const ageDistribution = useMemo(
+    () => processAgeDistribution(queryData?.ageDistribution),
+    [queryData?.ageDistribution],
+  );
 
-  const dadosSintomasComparativos = todosSintomas.map((sintoma) => {
-    const totalMun =
-      municipio.distribuicaoSintomas.find((s) => s.sintoma === sintoma)
-        ?.total || 0;
-    const totalEst =
-      estado.distribuicaoSintomas.find((s) => s.sintoma === sintoma)?.total ||
-      0;
-    const totalPais =
-      pais.distribuicaoSintomas.find((s) => s.sintoma === sintoma)?.total || 0;
+  const scatter = useMemo(
+    () => processScatterData(queryData?.scatterData),
+    [queryData?.scatterData],
+  );
 
-    return {
-      sintoma,
-      pctMunicipio:
-        municipio.totalTriagens > 0
-          ? (totalMun / municipio.totalTriagens) * 100
-          : 0,
-      pctEstado:
-        estado.totalTriagens > 0 ? (totalEst / estado.totalTriagens) * 100 : 0,
-      pctPais:
-        pais.totalTriagens > 0 ? (totalPais / pais.totalTriagens) * 100 : 0,
-    };
-  });
+  const heatmap = useMemo(
+    () => processHeatmapData(queryData?.heatmapData),
+    [queryData?.heatmapData],
+  );
 
-  // 2. Processamento Normalizado de Gravidade por Faixa Etária (%)
-  const faixas = ["0-2 anos", "3-17 anos", "18-59 anos", "60+ anos"];
-
-  const dadosFaixasEtariasComparativas = faixas.map((faixa) => {
-    const munFaixa = municipio.faixasEtarias.find((f) => f.faixa === faixa);
-    const estFaixa = estado.faixasEtarias.find((f) => f.faixa === faixa);
-    const paisFaixa = pais.faixasEtarias.find((f) => f.faixa === faixa);
-
-    const munTotal = (munFaixa?.leves || 0) + (munFaixa?.graves || 0);
-    const estTotal = (estFaixa?.leves || 0) + (estFaixa?.graves || 0);
-    const paisTotal = (paisFaixa?.leves || 0) + (paisFaixa?.graves || 0);
-
-    return {
-      faixa,
-      taxaGraveMunicipio:
-        munTotal > 0 ? ((munFaixa?.graves || 0) / munTotal) * 100 : 0,
-      taxaGraveEstado:
-        estTotal > 0 ? ((estFaixa?.graves || 0) / estTotal) * 100 : 0,
-      taxaGravePais:
-        paisTotal > 0 ? ((paisFaixa?.graves || 0) / paisTotal) * 100 : 0,
-    };
-  });
+  if (loading) {
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <Typography variant="h6" color="text.secondary">
+          Carregando dados do BigQuery...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
-    <Grid container spacing={3}>
-      {/* 1. Taxa Geral de Gravidade Comparativa */}
-      <Grid size={{ xs: 12, lg: 4 }}>
-        <ComparativePrevalenceChart
-          taxaMunicipio={municipio.taxaGravidade}
-          taxaEstado={estado.taxaGravidade}
-          taxaPais={pais.taxaGravidade}
-          nomeMunicipio={municipio.nomeLocal}
-          nomeEstado={estado.nomeLocal}
-        />
-      </Grid>
+    <Box sx={{ flexGrow: 1 }}>
+      <Grid container spacing={3}>
+        {/* 1. GRÁFICO DE LINHAS */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              📈 Evolução Temporal (Gráfico de Linhas)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={timeSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="ano" />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(val) => formatNumber(val)}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={(val) => formatNumber(val)}
+                />
+                <Tooltip formatter={tooltipNumberFormatter} />
+                <Legend />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="casos"
+                  stroke="#38bdf8"
+                  name="Casos Notificados"
+                  strokeWidth={2}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="obitos"
+                  stroke="#f43f5e"
+                  name="Óbitos"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
 
-      {/* 2. Gravidade por Faixa Etária Comparativa */}
-      <Grid size={{ xs: 12, lg: 8 }}>
-        <ComparativeAgeSeverityChart
-          data={dadosFaixasEtariasComparativas}
-          nomeMunicipio={municipio.nomeLocal}
-          nomeEstado={estado.nomeLocal}
-        />
-      </Grid>
+        {/* 2. GRÁFICO DE BARRAS */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              📊 Prevalência de Sintomas (Gráfico de Barras)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={symptoms} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" unit="%" domain={[0, 100]} />
+                <YAxis dataKey="sintoma" type="category" width={120} />
+                <Tooltip formatter={tooltipPercentFormatter} />
+                <Bar
+                  dataKey="prevalencia"
+                  fill="#0284c7"
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
 
-      {/* 3. Distribuição Relativa de Sintomas */}
-      <Grid size={{ xs: 12 }}>
-        <ComparativeSymptomsChart
-          data={dadosSintomasComparativos}
-          nomeMunicipio={municipio.nomeLocal}
-          nomeEstado={estado.nomeLocal}
-        />
+        {/* 3. HISTOGRAMA */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              📉 Distribuição Demográfica (Histograma)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={ageDistribution} barCategoryGap={0}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="faixa" />
+                <YAxis tickFormatter={(val) => formatNumber(val)} />
+                <Tooltip formatter={tooltipNumberFormatter} />
+                <Bar dataKey="frequencia" fill="#6366f1" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* 4. DISPERSÃO */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              🔵 Idade vs. Retardo de Notificação (Dispersão)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <ScatterChart>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  dataKey="idade"
+                  name="Idade"
+                  unit=" anos"
+                />
+                <YAxis
+                  type="number"
+                  dataKey="diasNotificacao"
+                  name="Dias até Notificação"
+                  unit=" d"
+                />
+                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                <Scatter name="Pacientes" data={scatter} fill="#f59e0b" />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* 5. MAPA DE CALOR */}
+        <Grid size={{ xs: 12 }}>
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              🔥 Intensidade Sazonal por Escopo (Mapa de Calor)
+            </Typography>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(1, 1fr)",
+                  sm: "repeat(2, 1fr)",
+                  md: "repeat(4, 1fr)",
+                },
+                gap: 1.5,
+                mt: 2,
+              }}
+            >
+              {heatmap.map((row) => (
+                <Box
+                  key={row.mes}
+                  sx={{
+                    p: 1.5,
+                    border: "1px solid #334155",
+                    borderRadius: 1,
+                    bgcolor: "background.default",
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: "bold", mb: 1, color: "#f8fafc" }}
+                  >
+                    {row.mes}
+                  </Typography>
+
+                  {/* Barbosa */}
+                  <Box
+                    sx={{
+                      p: 1,
+                      mb: 0.5,
+                      // Al multiplicar (row.Barbosa / 100) por un factor de intensidad (ex: 3),
+                      // un 15% pasa a tener opacidad 0.45 en vez de 0.15.
+                      bgcolor: `rgba(239, 68, 68, ${Math.min((row.Barbosa / 100) * 3 + 0.1, 1)})`,
+                      borderRadius: 1,
+                      fontSize: "0.85rem",
+                      color: "#ffffff",
+                    }}
+                  >
+                    Barbosa: {formatPercent(row.Barbosa)}
+                  </Box>
+
+                  {/* São Paulo */}
+                  <Box
+                    sx={{
+                      p: 1,
+                      mb: 0.5,
+                      bgcolor: `rgba(239, 68, 68, ${Math.min((row.SP / 100) * 3 + 0.1, 1)})`,
+                      borderRadius: 1,
+                      fontSize: "0.85rem",
+                      color: "#ffffff",
+                    }}
+                  >
+                    São Paulo: {formatPercent(row.SP)}
+                  </Box>
+
+                  {/* Brasil */}
+                  <Box
+                    sx={{
+                      p: 1,
+                      bgcolor: `rgba(239, 68, 68, ${Math.min((row.Brasil / 100) * 3 + 0.1, 1)})`,
+                      borderRadius: 1,
+                      fontSize: "0.85rem",
+                      color: "#ffffff",
+                    }}
+                  >
+                    Brasil: {formatPercent(row.Brasil)}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+        </Grid>
       </Grid>
-    </Grid>
+    </Box>
   );
-}
+};

@@ -1,3 +1,5 @@
+import { TerritorialScope } from "@/app/types";
+
 // Base contendo todos os atributos clínicos e demográficos compartilhados
 export interface DenguePatientBase {
   idade_paciente: number;
@@ -79,22 +81,13 @@ export interface ResultadoPredicao {
   nivel_risco: "BAIXO" | "MÉDIO" | "ALTO";
 }
 export interface DashboardStats {
-  origem: "municipio" | "estado" | "pais";
+  origem: TerritorialScope;
   nomeLocal: string;
   totalTriagens: number;
   taxaGravidade: number;
   distribuicaoSintomas: { sintoma: string; total: number }[];
   faixasEtarias: { faixa: string; leves: number; graves: number }[];
 }
-
-export interface QueryFilters {
-  codigoIbge?: string;
-  siglaUf?: string;
-  anoInicio?: number;
-  anoFim?: number;
-  limiteRegistrosBrutos?: number;
-}
-
 
 export interface ComparativoNacionalStats {
   municipio: DashboardStats;
@@ -107,5 +100,11 @@ export interface DengueDashboardClientProps {
   anoInicio: number;
   anoFim: number;
 }
-
-
+export interface QueryFilters {
+  scope: TerritorialScope;
+  startYear: number;
+  endYear: number;
+  ageGroup?: string;
+  gender?: string;
+  hospitalizationRate?: boolean;
+}

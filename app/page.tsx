@@ -1,18 +1,21 @@
 import { QueryRepository } from "@/lib/repositories/queryRepository";
-import { DengueDashboardClient } from "./_components/Dashboard";
+import { DashboardClient } from "./_components/Dashboard";
+import { HospitalMetricsGridProps } from "./types";
+import { defaultFilterState } from "./utils";
 
-export const revalidate = 0; // Renderização dinâmica sem cache estático
+export default async function Page() {
+  // Carga inicial dos dados diretamente do BigQuery via Repositório no Server Side
+  const initialData =
+    await QueryRepository.getDashboardData(defaultFilterState);
 
-export default async function DashboardPage() {
-  // Busca os dados comparativos (Município, Estado e País) diretamente no BigQuery
-  const comparativoData = await QueryRepository.getComparativoNacional();
+  const metricsGridData: HospitalMetricsGridProps =
+    await QueryRepository.getHospitalMetricsGridData(defaultFilterState);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
-      <DengueDashboardClient
-        initialComparativo={comparativoData}
-        anoInicio={2014}
-        anoFim={2024}
+    <main style={{ minHeight: "100vh", padding: "16px" }}>
+      <DashboardClient
+        initialData={initialData}
+        metricsGridData={metricsGridData}
       />
     </main>
   );
